@@ -16,7 +16,7 @@ function App() {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    socket = io('http://localhost:4000');
+    socket = io('https://websockets-278v.onrender.com');
 
     socket.on('connect', () => {
       setMySocketId(socket.id);
