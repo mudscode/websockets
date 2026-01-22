@@ -6,7 +6,9 @@ import './App.css';
 let socket;
 
 function App() {
-  const [currentStep, setCurrentStep] = useState('login'); // 'login', 'users', 'chat'
+  const socketRef = useRef(null);
+
+  const [currentStep, setCurrentStep] = useState('login');
   const [username, setUsername] = useState('');
   const [mySocketId, setMySocketId] = useState('');
   const [onlineUsers, setOnlineUsers] = useState([]);
@@ -16,11 +18,12 @@ function App() {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-
-    const socket = io("https://websockets-278v.onrender.com", {
-        transports: ["websocket"],
-        withCredentials: true,
+    socketRef.current = io("https://websockets-278v.onrender.com", {
+      transports: ["websocket"],
+      withCredentials: true,
     });
+
+    const socket = socketRef.current;
 
     socket.on('connect', () => {
       setMySocketId(socket.id);
@@ -28,7 +31,6 @@ function App() {
     });
 
     socket.on('users_list', (users) => {
-      // Filter out self
       const otherUsers = users.filter(u => u.socketId !== socket.id);
       setOnlineUsers(otherUsers);
     });
@@ -39,8 +41,6 @@ function App() {
 
     socket.on('user_left', (user) => {
       setOnlineUsers(prev => prev.filter(u => u.socketId !== user.socketId));
-      
-      // If we were chatting with this user, go back to users list
       if (selectedUser?.socketId === user.socketId) {
         setCurrentStep('users');
         setSelectedUser(null);
@@ -53,7 +53,7 @@ function App() {
         from: data.fromUsername,
         message: data.message,
         timestamp: data.timestamp,
-        type: 'received'
+        type: 'received',
       }]);
     });
 
@@ -62,26 +62,22 @@ function App() {
         from: 'You',
         message: data.message,
         timestamp: data.timestamp,
-        type: 'sent'
+        type: 'sent',
       }]);
     });
 
-    return () => {
-      socket.disconnect();
-    };
+    return () => socket.disconnect();
   }, []);
 
   useEffect(() => {
-    // Auto scroll to bottom
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (username.trim()) {
-      socket.emit('register', { username: username.trim() });
-      setCurrentStep('users');
-    }
+    if (!username.trim()) return;
+    socketRef.current.emit('register', { username: username.trim() });
+    setCurrentStep('users');
   };
 
   const handleSelectUser = (user) => {
@@ -92,13 +88,12 @@ function App() {
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (messageInput.trim() && selectedUser) {
-      socket.emit('private_message', {
-        toSocketId: selectedUser.socketId,
-        message: messageInput.trim()
-      });
-      setMessageInput('');
-    }
+    if (!messageInput.trim() || !selectedUser) return;
+    socketRef.current.emit('private_message', {
+      toSocketId: selectedUser.socketId,
+      message: messageInput.trim(),
+    });
+    setMessageInput('');
   };
 
   const handleBackToUsers = () => {
@@ -106,7 +101,7 @@ function App() {
     setSelectedUser(null);
     setMessages([]);
   };
-
+  
   // LOGIN SCREEN
   if (currentStep === 'login') {
     return (
