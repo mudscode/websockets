@@ -16,7 +16,11 @@ function App() {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    socket = io('https://websockets-278v.onrender.com');
+
+    const socket = io("https://websockets-278v.onrender.com", {
+        transports: ["websocket"],
+        withCredentials: true,
+    });
 
     socket.on('connect', () => {
       setMySocketId(socket.id);

@@ -4,13 +4,19 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: "https://websockets-git-main-mudscodes-projects.vercel.app",
+  credentials: true,
+}));
 
 const server = http.createServer(app);
+
 const io = new Server(server, {
+  transports: ["websocket"],
   cors: {
-    origin: "http://localhost:5173",
-    methods: ["GET", "POST"],
+    origin: "https://websockets-git-main-mudscodes-projects.vercel.app",
+    credentials: true,
   },
 });
 
@@ -25,15 +31,12 @@ io.on("connection", (socket) => {
       userId: socket.id,
     });
 
-    console.log(`✅ ${data.username} joined (${socket.id})`);
-
     const usersList = Array.from(onlineUsers.entries()).map(([id, user]) => ({
       socketId: id,
       username: user.username,
     }));
 
     socket.emit("users_list", usersList);
-
     socket.broadcast.emit("user_joined", {
       socketId: socket.id,
       username: data.username,
@@ -42,7 +45,6 @@ io.on("connection", (socket) => {
 
   socket.on("private_message", (data) => {
     const sender = onlineUsers.get(socket.id);
-    console.log(`📨 Message from ${sender.username} to ${data.toSocketId}`);
 
     io.to(data.toSocketId).emit("receive_message", {
       from: socket.id,
@@ -58,13 +60,10 @@ io.on("connection", (socket) => {
     });
   });
 
-  // Handle disconnection
   socket.on("disconnect", () => {
     const user = onlineUsers.get(socket.id);
     if (user) {
-      console.log(`❌ ${user.username} left (${socket.id})`);
       onlineUsers.delete(socket.id);
-
       socket.broadcast.emit("user_left", {
         socketId: socket.id,
         username: user.username,
@@ -73,7 +72,7 @@ io.on("connection", (socket) => {
   });
 });
 
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
-  console.log("🚀 WebSocket server running on http://localhost:4000");
+  console.log("🚀 WebSocket server running on port", PORT);
 });
